@@ -1,5 +1,7 @@
 import os
-import threading
+import time
+from dotenv import load_dotenv
+from src.llm import LLM
 from src.agent import Agent
 from src.web_interface import WebInterface
 from src.tool_manager import ToolManager
@@ -7,21 +9,26 @@ from src.docker_integration import DockerIntegration
 from src.browser_integration import BrowserIntegration
 from flask import Flask
 
-app = Flask(__name__)
+# 加载当前目录下的.env文件
+load_dotenv()
 
 tool_manager = ToolManager()
 
-docker_integration = DockerIntegration(tool_manager)  # 移除了对 DOCKER_HOST 的引用
+docker_integration = DockerIntegration(tool_manager)
 tool_manager.register_tool('docker', docker_integration)
 
 browser_integration = BrowserIntegration()
 tool_manager.register_tool('browser', browser_integration)
 
-agent = Agent(tool_manager)
-web_interface = WebInterface(app, agent)  # 将Flask app传递给WebInterface
+llm = LLM()  # 初始化LLM实例
 
-def run_flask():
-    app.run(host='0.0.0.0', port=5000)
+agent = Agent(tool_manager, llm)
+web_interface = WebInterface(agent)  # 将Flask app传递给WebInterface
 
-flask_thread = threading.Thread(target=run_flask, daemon=True)
-flask_thread.start()
+# 阻塞主线程，防止它退出
+try:
+    while True:
+        time.sleep(1)  # 主线程可以执行一些其他任务或简单地阻塞
+except KeyboardInterrupt:
+    # 如果有Ctrl+C中断，可以在这里添加清理代码
+    pass
